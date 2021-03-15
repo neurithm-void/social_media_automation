@@ -18,7 +18,7 @@ class Google_Drive_API:
         if self.spreadsheet:
             self.SPREADSHEET_API_SCOPES = ['https://www.googleapis.com/auth/spreadsheets']
         
-        
+
     def create_spreadsheet_api_token(self):
         #https://developers.google.com/sheets/api/quickstart/python for any updates in api call for google spreadsheet api v4
         #run only once and before run make sure there's credential.json , you can generate one from the above link "enable api" uttonin cwd
@@ -58,19 +58,22 @@ class Google_Drive_API:
                 pickle.dump(creds, token)
         return creds
 
-    def get_spreadsheet_as_dataframe(self, file_url, SAMPLE_RANGE_NAME = None):
-        google_authetication_credentials = create_spreadsheet_api_token()
-        file_id = file_url.split('//')[-1].split('/')[-2]
-        service = build('sheets', 'v4', credentials=google_authetication_credentials)
-        sheet = service.spreadsheets() 
-        result = sheet.values().get(spreadsheetId=file_id,range=SAMPLE_RANGE_NAME).execute()
-        values = result.get('values', [])
-        headers=values[0] #headears are 1st row of spreadsheet
-        data_rows=values[1:] #rest from 1st row will be considered as data_row
 
-        df=pd.DataFrame(columns=headers, data=values[1:]) #creating dataframe
+    def get_spreadsheet_data(self, file_url, sample_range = None):
+        google_authetication_credentials = self.create_spreadsheet_api_token()
+        self.file_id = file_url.split('//')[-1].split('/')[-2]
+        self.service = build('sheets', 'v4', credentials=google_authetication_credentials)
+        self.sheet = self.service.spreadsheets() 
+        result = self.sheet.values().get(spreadsheetId=self.file_id,range=sample_range).execute()
+        spreadsheet_data = result.get('values', [])
+        return spreadsheet_data
 
-        return df
 
-    def update_spreadsheet(self):
-        pass
+    def post_spreadsheet_update(self, working_row_index, timestamp):
+        #column A has 
+        result = self.sheet.values().update(spreadsheetId=self.file_id, range=f'Sheet1!A{working_row_index}:A{working_row_index}',
+                               valueInputOption="USER_ENTERED", body={ "values" : [[timestamp]] }).execute()
+        
+        if result['updatedCells']==1:
+            print("Automation Post Complete")
+        return result
